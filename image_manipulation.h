@@ -32,7 +32,7 @@ private:
     void updateImageDisplay();
 
     std::unique_ptr<QLabel> imageLabel;
-    QPixmap image;
+    std::unique_ptr<QPixmap> image;
     std::unique_ptr<QPushButton> increaseButton;
     std::unique_ptr<QPushButton> decreaseButton;
     std::unique_ptr<QPushButton> selectImageButton;

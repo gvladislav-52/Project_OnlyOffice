@@ -1,6 +1,5 @@
 #include "image_manipulation.h"
 #include <QFileDialog>
-#include <QResizeEvent>
 #include <QHBoxLayout>
 #include <QDebug>
 #include <memory>
@@ -8,6 +7,7 @@
 image_Manipulation::image_Manipulation(QWidget *parent)
     : QMainWindow(parent),
     imageLabel(std::make_unique<QLabel>(this)),
+    image(std::make_unique<QPixmap>()),
     increaseButton(std::make_unique<QPushButton>("+", this)),
     decreaseButton(std::make_unique<QPushButton>("-", this)),
     selectImageButton(std::make_unique<QPushButton>("Выбрать изображение", this)),
@@ -18,6 +18,14 @@ image_Manipulation::image_Manipulation(QWidget *parent)
 {
     setupUI();
     resize(300, 400);
+}
+
+void image_Manipulation::resizeEvent(QResizeEvent *event)
+{
+    QMainWindow::resizeEvent(event);
+    if (!image->isNull()) {
+        updateImageDisplay();
+    }
 }
 
 image_Manipulation::~image_Manipulation() {}
@@ -45,14 +53,6 @@ void image_Manipulation::setupUI()
     setCentralWidget(centralWidget.get());
 }
 
-void image_Manipulation::resizeEvent(QResizeEvent *event)
-{
-    QMainWindow::resizeEvent(event);
-    if (!image.isNull()) {
-        updateImageDisplay();
-    }
-}
-
 void image_Manipulation::increaseBrightness()
 {
     changeBrightness(10);
@@ -67,7 +67,7 @@ void image_Manipulation::selectImage()
 {
     QString fileName = QFileDialog::getOpenFileName(this, "Выбрать изображение", "", "Изображения (*.png *.jpg *.jpeg *.bmp)");
     if (!fileName.isEmpty()) {
-        if (!image.load(fileName)) {
+        if (!image->load(fileName)) {
             qWarning() << "Failed to load image:" << fileName;
             return;
         }
@@ -77,14 +77,14 @@ void image_Manipulation::selectImage()
 
 void image_Manipulation::saveImage()
 {
-    if (image.isNull()) {
+    if (image->isNull()) {
         qWarning() << "Image not loaded or invalid.";
         return;
     }
 
     QString fileName = QFileDialog::getSaveFileName(this, "Сохранить изображение", "", "Изображения (*.png *.jpg *.jpeg *.bmp)");
     if (!fileName.isEmpty()) {
-        if (!image.save(fileName)) {
+        if (!image->save(fileName)) {
             qWarning() << "Failed to save image:" << fileName;
         }
     }
@@ -92,12 +92,12 @@ void image_Manipulation::saveImage()
 
 void image_Manipulation::changeBrightness(int delta)
 {
-    if (image.isNull()) {
+    if (image->isNull()) {
         qWarning() << "Image not loaded or invalid.";
         return;
     }
 
-    QImage tempImage = image.toImage();
+    QImage tempImage = image->toImage();
     tempImage = tempImage.convertToFormat(QImage::Format_ARGB32);
 
     int width = tempImage.width();
@@ -105,22 +105,22 @@ void image_Manipulation::changeBrightness(int delta)
 
     QRgb *pixels = reinterpret_cast<QRgb *>(tempImage.bits());
     int pixelCount = width * height;
-
+    int r,g,b;
     for (int i = 0; i < pixelCount; ++i) {
-        int r = qBound(0, qRed(pixels[i]) + delta, 255);
-        int g = qBound(0, qGreen(pixels[i]) + delta, 255);
-        int b = qBound(0, qBlue(pixels[i]) + delta, 255);
+        r = qBound(0, qRed(pixels[i]) + delta, 255);
+        g = qBound(0, qGreen(pixels[i]) + delta, 255);
+        b = qBound(0, qBlue(pixels[i]) + delta, 255);
         pixels[i] = qRgb(r, g, b);
     }
 
-    image = QPixmap::fromImage(tempImage);
+    *image = QPixmap::fromImage(tempImage);
     updateImageDisplay();
 }
 
 void image_Manipulation::updateImageDisplay()
 {
     QSize windowSize = size();
-    QSize imageSize = image.size();
+    QSize imageSize = image->size();
     imageSize.scale(windowSize, Qt::KeepAspectRatio);
-    imageLabel->setPixmap(image.scaled(imageSize, Qt::KeepAspectRatio, Qt::SmoothTransformation));
+    imageLabel->setPixmap(image->scaled(imageSize, Qt::KeepAspectRatio, Qt::SmoothTransformation));
 }
